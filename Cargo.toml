@@ -1,0 +1,15 @@
+[package]
+name = "ddos"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+
+# MAX SPEED SETTINGS
+[profile.dev]
+panic = "abort"
+opt-level = 3   # <--- ADD THIS! (Makes code 10x faster)
+
+[profile.release]
+panic = "abort"
+opt-level = 3
