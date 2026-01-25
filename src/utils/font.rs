@@ -1,6 +1,33 @@
+/*
+ * font.rs - 8x8 Bitmap Font Data for DDOS Console
+ * 
+ * This module contains a complete bitmap font for ASCII printable characters.
+ * Each character is represented as an 8x8 grid of pixels, with each row stored
+ * as a single byte (8 bits = 8 pixels).
+ * 
+ * Font format:
+ * - Each character is 8 bytes (one byte per row)
+ * - Bit value 1 = foreground pixel, 0 = background pixel
+ * - Most significant bit (bit 7) represents the leftmost pixel
+ * - Covers ASCII characters 0x20 (space) through 0x7E (tilde) = 95 characters
+ * 
+ * Example: The letter 'A' (0x41, index 33):
+ *   0x18 = 0b00011000  ->    ##
+ *   0x3C = 0b00111100  ->   ####
+ *   0x66 = 0b01100110  ->  ##  ##
+ *   0x66 = 0b01100110  ->  ##  ##
+ *   0x7E = 0b01111110  ->  ######
+ *   0x66 = 0b01100110  ->  ##  ##
+ *   0x66 = 0b01100110  ->  ##  ##
+ *   0x00 = 0b00000000  ->  (blank)
+ */
+
+// Character cell dimensions (in pixels)
 pub const FONT_WIDTH: usize = 8;
 pub const FONT_HEIGHT: usize = 8;
-// Minimal font to save space (Space through ~)
+
+// Font bitmap array: 95 characters, each 8 bytes (8x8 pixels)
+// Index 0 = Space (0x20), Index 94 = Tilde (0x7E)
 pub static FONT_BASIC: [[u8; 8]; 95] = [
     [0, 0, 0, 0, 0, 0, 0, 0],                         // Space
     [0x18, 0x3C, 0x3C, 0x18, 0x18, 0x00, 0x18, 0x00], // !
