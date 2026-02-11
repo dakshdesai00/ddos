@@ -22,7 +22,8 @@ use core::fmt;
 use core::ptr::{read_volatile, write_volatile};
 
 // PL011 UART register addresses (BCM2711/RPi4 peripheral base at 0xFE000000)
-const PL011_BASE: usize = 0xFE201000; // UART0 base address
+// const PL011_BASE: usize = 0xFE201000; // UART0 base address
+const PL011_BASE: usize = 0x3F201000;
 const DR: *mut u32 = (PL011_BASE + 0x00) as *mut u32; // Data Register (read/write data)
 const FR: *mut u32 = (PL011_BASE + 0x18) as *mut u32; // Flag Register (status flags)
 const IBRD: *mut u32 = (PL011_BASE + 0x24) as *mut u32; // Integer Baud Rate Divisor

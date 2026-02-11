@@ -1,5 +1,7 @@
 [build]
 target = "aarch64-unknown-none-softfloat"
-
-[target.aarch64-unknown-none-softfloat]
+# Move this line UP so it belongs to [build]
 rustflags = ["-C", "link-arg=-Tlink.ld"]
+
+[unstable]
+build-std = ["core", "compiler_builtins", "alloc"]

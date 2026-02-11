@@ -1,95 +1,98 @@
-/*
- * main.rs - DDOS Operating System Entry Point
- *
- * This is the main Rust entry point for the DDOS (Daksh's Demo Operating System).
- * It's called from the assembly boot code after initial hardware setup.
- *
- * The OS provides:
- * - UART serial console for debugging
- * - HDMI framebuffer graphics output
- * - Simple text console with colored text support
- * - Interactive input/output via UART
- *
- * Control flow:
- * 1. Initialize UART for serial debugging
- * 2. Initialize GPU framebuffer for HDMI display
- * 3. Create text console on framebuffer
- * 4. Display welcome message
- * 5. Enter infinite loop reading UART and echoing to screen
- */
+// ============================================================================
+// MAIN.RS - KERNEL ENTRY POINT
+// ============================================================================
 
-// Disable Rust standard library (no OS support available)
-#![no_std]
-// Disable standard main function (we define our own entry point)
-#![no_main]
+// 1. Enable Allocator Error Handling (Required for our Heap)
+#![feature(alloc_error_handler)]
+// 2. Standard No-OS Setup
+#![no_std] // Disable standard library (no OS support)
+#![no_main] // Disable standard main() entry point
 
-// Include assembly boot code from cpu module
+// --- 3. MEMORY MANAGEMENT IMPORTS ---
+// We need this to use 'Box', 'Vec', and 'String'.
+extern crate alloc;
+use alloc::boxed::Box;
+use alloc::vec::Vec;
+
+// --- 4. MODULES ---
+mod drivers; // Hardware drivers (UART, Framebuffer, Console)
+mod memory; // Memory management (Heap Allocator)
+mod utils; // Utilities (Locked wrapper, Font)
+
+// --- 5. ASSEMBLY BOOTLOADER ---
 use core::arch::global_asm;
 global_asm!(include_str!("cpu/boot.s"));
 
-// Module declarations
-mod drivers; // Hardware drivers (UART, framebuffer, mailbox, console)
-mod utils; // Utilities (font data)
+// --- 6. IMPORTS ---
+use core::fmt::Write; // Allows usage of writeln! macro
+use core::panic::PanicInfo; // Used for the panic handler
+use drivers::{console, framebuffer, uart}; // Import drivers
 
-use drivers::console;
-use drivers::framebuffer;
-use drivers::uart;
-
-use core::fmt::Write;
-use core::panic::PanicInfo;
-
-/*
- * Main function - Entry point called from boot.s
- *
- * Attributes:
- * - no_mangle: Prevents Rust from changing function name (boot.s calls "_main")
- * - extern "C": Uses C calling convention for compatibility with assembly
- * - Returns '!': Never returns (infinite loop)
- *
- * How it works:
- * 1. Initialize UART for serial debugging output
- * 2. Attempt to initialize framebuffer via GPU mailbox
- * 3. On success: Create console, display UI, enter input loop
- * 4. On failure: Print error to UART and halt
- */
+// ============================================================================
+// KERNEL MAIN FUNCTION
+// ============================================================================
 #[unsafe(no_mangle)]
 pub extern "C" fn _main() -> ! {
-    // Initialize UART serial port for debugging
+    // A. Init UART (Serial) First
+    // We do this first so if anything else fails, we can print the error.
     let mut uart = uart::Uart::new();
-    let _ = writeln!(uart, "\n[KERNEL] Starting...");
+    let _ = writeln!(uart, "\n[KERNEL] Booting DDOS...");
 
-    // Attempt to initialize framebuffer
-    // Returns Ok(fb) with framebuffer on success, or Err(code) on failure
+    // B. Init Memory (The Heap)
+    // CRITICAL: This calls the 'init' function in 'src/memory/mod.rs'
+    // This MUST be done before using Box or Vec!
+    memory::init();
+    let _ = writeln!(uart, "[KERNEL] Heap Initialized.");
+
+    // C. Init Framebuffer (HDMI)
     match framebuffer::FrameBuffer::new() {
         Ok(fb) => {
             let _ = writeln!(uart, "[KERNEL] HDMI Initialized.");
 
-            // Create text console on framebuffer
+            // Wrap the framebuffer in our Console driver
             let mut console = console::Console::new(fb);
 
-            // Display welcome banner with colored text
+            // D. Visual Test
             console.set_color(0xFF00FF00); // Green
-            let _ = writeln!(console, "DDOS Kernel v0.1");
+            let _ = writeln!(console, "Welcome to DDOS Kernel v0.1");
             console.set_color(0xFFFFFFFF); // White
-            let _ = write!(console, "\n> "); // Command prompt
 
-            // Main input loop: read UART and echo to console
-            // This creates an interactive terminal experience
+            // E. HEAP ALLOCATION TEST
+            let _ = writeln!(console, "Testing Heap Allocation...");
+
+            // Test 1: Box (Single allocation)
+            // If the heap works, this allocates memory and stores 42.
+            let heap_val = Box::new(42);
+            let _ = writeln!(
+                console,
+                "- Box allocated at {:p}, value: {}",
+                heap_val, *heap_val
+            );
+
+            // Test 2: Vec (Dynamic resizing)
+            // This tests finding new blocks and expanding.
+            let mut vec = Vec::new();
+            for i in 0..5 {
+                vec.push(i);
+            }
+            let _ = writeln!(console, "- Vec allocated: {:?} (Success!)", vec);
+
+            // F. The Infinite Loop (Shell)
+            let _ = write!(console, "\n> ");
             loop {
-                // Block until a byte arrives on UART (keyboard input)
                 let byte = uart.read_byte();
 
                 match byte {
                     b'\r' => {
-                        // Carriage return (Enter key): start new line with prompt
+                        // Enter Key
                         let _ = write!(console, "\n> ");
                     }
                     127 | 8 => {
-                        // Backspace (ASCII 127 = DEL, 8 = BS)
+                        // Backspace
                         console.backspace();
                     }
                     _ => {
-                        // Regular printable character: echo to screen
+                        // Regular Character
                         let c = byte as char;
                         let _ = write!(console, "{}", c);
                     }
@@ -97,25 +100,20 @@ pub extern "C" fn _main() -> ! {
             }
         }
         Err(e) => {
-            // Framebuffer initialization failed - print error and halt
-            let _ = writeln!(uart, "[PANIC] HDMI Failed. Error: 0x{:X}", e);
-            loop {} // Infinite loop (system halted)
+            // If HDMI fails, print error to Serial and halt.
+            let _ = writeln!(uart, "[PANIC] HDMI Init Failed: Error 0x{:X}", e);
+            loop {}
         }
     }
 }
 
-/*
- * Panic Handler - Required for no_std Rust
- *
- * This function is called when Rust code panics (unrecoverable error).
- * Since we have no OS or standard library, we simply halt the system.
- *
- * In a more sophisticated OS, this might:
- * - Print panic message to UART/screen
- * - Save crash dump to memory
- * - Reboot the system
- */
+// ============================================================================
+// PANIC HANDLER
+// ============================================================================
 #[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
-    loop {} // Infinite loop (system halted on panic)
+fn panic(info: &PanicInfo) -> ! {
+    let mut uart = uart::Uart::new();
+    let _ = writeln!(uart, "\n!!! KERNEL PANIC !!!");
+    let _ = writeln!(uart, "Details: {}", info);
+    loop {}
 }

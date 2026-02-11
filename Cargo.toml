@@ -8,7 +8,7 @@ edition = "2024"
 # MAX SPEED SETTINGS
 [profile.dev]
 panic = "abort"
-opt-level = 3   # <--- ADD THIS! (Makes code 10x faster)
+opt-level = 3
 
 [profile.release]
 panic = "abort"
