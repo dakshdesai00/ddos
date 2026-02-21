@@ -15,13 +15,12 @@
  */
 
 use core::ptr::{read_volatile, write_volatile};
+use crate::hardwareselect::MAILBOX_BASE;
 
-// Mailbox hardware register addresses (BCM2711/RPi4 peripheral base at 0xFE000000)
-// const MBOX_BASE: usize = 0xFE00B880; // Mailbox peripheral base
-const MBOX_BASE: usize = 0x3F00B880; // Mailbox peripheral base
-const MBOX_READ: *mut u32 = (MBOX_BASE + 0x00) as *mut u32; // Read register (offset 0x00)
-const MBOX_STATUS: *mut u32 = (MBOX_BASE + 0x18) as *mut u32; // Status register (offset 0x18)
-const MBOX_WRITE: *mut u32 = (MBOX_BASE + 0x20) as *mut u32; // Write register (offset 0x20)
+// Mailbox hardware register addresses (derived from hardware-selected peripheral base)
+const MBOX_READ: *mut u32 = (MAILBOX_BASE + 0x00) as *mut u32; // Read register (offset 0x00)
+const MBOX_STATUS: *mut u32 = (MAILBOX_BASE + 0x18) as *mut u32; // Status register (offset 0x18)
+const MBOX_WRITE: *mut u32 = (MAILBOX_BASE + 0x20) as *mut u32; // Write register (offset 0x20)
 
 // Mailbox status register bit flags
 const MBOX_FULL: u32 = 0x80000000; // Bit 31: Mailbox write queue is full
