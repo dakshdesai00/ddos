@@ -71,5 +71,7 @@ echo ""
 # -kernel: Path to kernel ELF binary
 qemu-system-aarch64 \
     -M raspi3b \
+    -display none \
+    -monitor none \
     -serial stdio \
     -kernel "$KERNEL_BINARY"

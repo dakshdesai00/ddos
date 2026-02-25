@@ -16,76 +16,48 @@ global_asm!(include_str!("cpu/boot.s"));
 
 use core::fmt::Write;
 use core::panic::PanicInfo;
-use drivers::{console, framebuffer, uart};
+use drivers::uart;
 
-// Kernel entry point (called from boot.s)
 #[unsafe(no_mangle)]
 pub extern "C" fn _main() -> ! {
-    // --- Early serial output (debug channel) ---
     let mut uart = uart::Uart::new();
     let _ = writeln!(uart, "\n[KERNEL] Booting DDOS...");
 
-    // --- Initialize heap allocator ---
     memory::init();
     let _ = writeln!(uart, "[KERNEL] Heap Initialized.");
+    let _ = writeln!(uart, "Welcome to DDOS Kernel v0.1");
+    let _ = writeln!(uart, "Testing Heap Allocation...");
 
-    // --- Initialize framebuffer (graphics output) ---
-    match framebuffer::FrameBuffer::new() {
-        Ok(fb) => {
-            let _ = writeln!(uart, "[KERNEL] HDMI Initialized.");
+    let heap_val = Box::new(42);
+    let _ = writeln!(
+        uart,
+        "- Box allocated at {:p}, value: {}",
+        heap_val, *heap_val
+    );
 
-            let mut console = console::Console::new(fb);
+    let mut vec = Vec::new();
+    for i in 0..5 {
+        vec.push(i);
+    }
+    let _ = writeln!(uart, "- Vec allocated: {:?} (Success!)", vec);
 
-            // Visual boot message
-            console.set_color(0xFF00FF00);
-            let _ = writeln!(console, "Welcome to DDOS Kernel v0.1");
-            console.set_color(0xFFFFFFFF);
-
-            // ================= TESTING FEATURES =================
-            let _ = writeln!(console, "Testing Heap Allocation...");
-
-            // Test: single heap allocation (Box)
-            let heap_val = Box::new(42);
-            let _ = writeln!(
-                console,
-                "- Box allocated at {:p}, value: {}",
-                heap_val, *heap_val
-            );
-
-            // Test: dynamic heap growth (Vec)
-            let mut vec = Vec::new();
-            for i in 0..5 {
-                vec.push(i);
+    let _ = write!(uart, "\n> ");
+    loop {
+        let byte = uart.read_byte();
+        match byte {
+            b'\r' | b'\n' => {
+                let _ = write!(uart, "\r\n> ");
             }
-            let _ = writeln!(console, "- Vec allocated: {:?} (Success!)", vec);
-            // ====================================================
-
-            // Simple UART echo shell
-            let _ = write!(console, "\n> ");
-            loop {
-                let byte = uart.read_byte();
-                match byte {
-                    b'\r' => {
-                        let _ = write!(console, "\n> ");
-                    }
-                    127 | 8 => {
-                        console.backspace();
-                    }
-                    _ => {
-                        let c = byte as char;
-                        let _ = write!(console, "{}", c);
-                    }
-                }
+            127 | 8 => {
+                let _ = write!(uart, "\x08 \x08");
             }
-        }
-        Err(e) => {
-            let _ = writeln!(uart, "[PANIC] HDMI Init Failed: Error 0x{:X}", e);
-            loop {}
+            _ => {
+                let _ = write!(uart, "{}", byte as char);
+            }
         }
     }
 }
 
-// Panic handler -> prints panic info to serial and halts
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     let mut uart = uart::Uart::new();
