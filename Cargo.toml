@@ -11,15 +11,18 @@ edition = "2024"
 # qemu  : QEMU emulator (RPi3 model, peripheral base 0x3F000000)
 # rpi3  : Real Raspberry Pi 3 hardware (peripheral base 0x3F000000)
 # rpi4  : Real Raspberry Pi 4 hardware (peripheral base 0xFE000000)
+# rpi5  : Real Raspberry Pi 5 hardware (peripheral base 0x1F000000)
 #
 # Usage: cargo build --features qemu
 #        cargo build --features rpi4
+#        cargo build --features rpi5
 #        cargo build --no-default-features --features rpi4
 # ============================================================================
 [features]
-qemu = []           # QEMU emulation (RPi3 model) - DEFAULT
-rpi3 = []           # Real RPi3 hardware
-rpi4 = []           # Real RPi4 hardware
+qemu = [] # QEMU emulation (RPi3 model) - DEFAULT
+rpi3 = [] # Real RPi3 hardware
+rpi4 = [] # Real RPi4 hardware
+rpi5 = [] # Real RPi5 hardware
 
 # MAX SPEED SETTINGS
 [profile.dev]

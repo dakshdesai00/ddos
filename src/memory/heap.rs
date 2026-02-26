@@ -33,15 +33,24 @@ impl FreeListNode {
 
 impl FreeList {
     pub unsafe fn init(start: usize, capacity: usize, heap_type: HeapType) -> Self {
-        let node_ptr = start as *mut FreeListNode;
+        let aligned_start = Self::align_up(start);
+        let alignment_loss = aligned_start - start;
+        let usable_capacity = capacity.saturating_sub(alignment_loss) & !(ALIGN - 1);
+
+        assert!(usable_capacity >= Self::block_overhead());
+
+        let node_ptr = aligned_start as *mut FreeListNode;
         unsafe {
-            node_ptr.write(FreeListNode::new(capacity, None));
+            node_ptr.write(FreeListNode::new(usable_capacity, None));
+
+            let footer = (aligned_start + usable_capacity - size_of::<usize>()) as *mut usize;
+            footer.write(usable_capacity);
         }
 
         FreeList {
             head: Some(node_ptr),
-            start_address: start,
-            capacity,
+            start_address: aligned_start,
+            capacity: usable_capacity,
             heap_type,
             next_fit_cursor: Some(node_ptr),
         }
@@ -91,7 +100,7 @@ impl FreeList {
         let mut best: Option<*mut FreeListNode> = None;
         let mut best_prev: Option<*mut FreeListNode> = None;
 
-        if requested_size >= self.capacity {
+        if requested_size > self.capacity {
             return (None, None);
         }
 
@@ -124,7 +133,7 @@ impl FreeList {
         let mut worst: Option<*mut FreeListNode> = None;
         let mut worst_prev: Option<*mut FreeListNode> = None;
 
-        if requested_size >= self.capacity {
+        if requested_size > self.capacity {
             return (None, None);
         }
 
@@ -151,7 +160,7 @@ impl FreeList {
         &mut self,
         requested_size: usize,
     ) -> (Option<*mut FreeListNode>, Option<*mut FreeListNode>) {
-        if requested_size >= self.capacity {
+        if requested_size > self.capacity {
             return (None, None);
         }
 
@@ -213,7 +222,7 @@ impl FreeList {
         let mut current = self.head;
         let mut prev = None;
 
-        if requested_size >= self.capacity {
+        if requested_size > self.capacity {
             return (None, None);
         }
 

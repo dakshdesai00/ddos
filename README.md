@@ -56,3 +56,12 @@ Official OSTEP home page (free chapter PDFs):
 Official downloadable all-in-one PDF page:
 
 - https://pages.cs.wisc.edu/~remzi/OSTEP/book-electronic.html
+
+## Hardware target features
+
+Build with exactly one hardware feature:
+
+- `qemu`
+- `rpi3`
+- `rpi4`
+- `rpi5`

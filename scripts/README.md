@@ -13,6 +13,7 @@ This directory contains automated build scripts for different target platforms.
 ```
 
 **What it does:**
+
 1. Cleans previous build artifacts
 2. Compiles with `--features qemu` (peripheral base: 0x3F000000)
 3. Launches QEMU with serial output to terminal
@@ -20,6 +21,7 @@ This directory contains automated build scripts for different target platforms.
 **To exit QEMU:** Press `Ctrl+A` then `X`
 
 **Requirements:**
+
 - `cargo` (Rust toolchain)
 - `qemu-system-aarch64`
 
@@ -34,11 +36,13 @@ This directory contains automated build scripts for different target platforms.
 ```
 
 **What it does:**
+
 1. Cleans previous build artifacts
 2. Compiles with `--features rpi4` (peripheral base: 0xFE000000)
 3. Outputs binary ready for SD card flashing
 
 **Output location:**
+
 ```
 target/aarch64-unknown-none-softfloat/debug/ddos
 ```
@@ -65,9 +69,49 @@ diskutil ejectDisk /dev/diskX
 
 ---
 
+### `build-rpi5.sh` - Raspberry Pi 5 Hardware Build
+
+**Builds kernel and generates SD-boot files for real RPi5 hardware.**
+
+```bash
+./scripts/build-rpi5.sh
+```
+
+**What it does:**
+
+1. Cleans previous build artifacts
+2. Compiles with `--features rpi5` (peripheral base: 0x1F000000)
+3. Converts ELF to `kernel_2712.img`
+4. Generates `config.txt`
+5. Optionally copies files to mounted boot partition
+
+**Output location:**
+
+```
+target/aarch64-unknown-none-softfloat/debug/ddos
+out/rpi5-sd/kernel_2712.img
+out/rpi5-sd/config.txt
+```
+
+**To place on SD boot partition:**
+
+```bash
+# Auto-copy if boot partition is mounted
+./scripts/build-rpi5.sh /Volumes/bootfs
+
+# Or manual copy
+cp out/rpi5-sd/kernel_2712.img /Volumes/bootfs/kernel_2712.img
+cp out/rpi5-sd/config.txt /Volumes/bootfs/config.txt
+```
+
+**⚠️ Note:** RPi5 should use boot files on the FAT partition (no raw `dd` needed for kernel updates).
+
+---
+
 ## Manual Build (If Scripts Don't Work)
 
 ### For QEMU:
+
 ```bash
 cd /Users/dakshdesai/Codes/rust-os/ddos
 cargo clean
@@ -76,11 +120,22 @@ qemu-system-aarch64 -M raspi3b -serial stdio -kernel target/aarch64-unknown-none
 ```
 
 ### For Real RPi4:
+
 ```bash
 cd /Users/dakshdesai/Codes/rust-os/ddos
 cargo clean
 cargo build --features rpi4 --target aarch64-unknown-none-softfloat
 # Then flash using dd command above
+```
+
+### For Real RPi5:
+
+```bash
+cd /Users/dakshdesai/Codes/rust-os/ddos
+cargo clean
+cargo build --features rpi5 --target aarch64-unknown-none-softfloat
+llvm-objcopy -O binary target/aarch64-unknown-none-softfloat/debug/ddos out/rpi5-sd/kernel_2712.img
+# Copy kernel_2712.img + config.txt to SD boot partition
 ```
 
 ---
@@ -90,19 +145,27 @@ cargo build --features rpi4 --target aarch64-unknown-none-softfloat
 The build system uses Cargo features to select target hardware:
 
 ### `qemu` - QEMU Emulation (RPi3 Model)
+
 - Peripheral base: `0x3F000000`
 - Used by QEMU's `-M raspi3b` emulator
 - Best for development and testing
 
 ### `rpi3` - Real Raspberry Pi 3
+
 - Peripheral base: `0x3F000000`
 - Same as QEMU (RPi3 is the target)
 - For flashing to real RPi3 hardware
 
 ### `rpi4` - Real Raspberry Pi 4
+
 - Peripheral base: `0xFE000000`
 - Different from RPi3!
 - For flashing to real RPi4 hardware
+
+### `rpi5` - Real Raspberry Pi 5
+
+- Peripheral base: `0x1F000000`
+- For flashing to real RPi5 hardware
 
 **Note:** Exactly ONE feature must be enabled at build time.
 
@@ -111,25 +174,31 @@ The build system uses Cargo features to select target hardware:
 ## Troubleshooting
 
 ### Script Doesn't Execute
+
 ```bash
 # Make it executable
 chmod +x ./scripts/build-qemu.sh
 chmod +x ./scripts/build-rpi4.sh
+chmod +x ./scripts/build-rpi5.sh
 ```
 
 ### QEMU Not Found
+
 ```bash
 # Install via Homebrew (macOS)
 brew install qemu
 ```
 
 ### Build Fails
+
 1. Ensure you have the Rust nightly toolchain:
+
    ```bash
    rustup toolchain install nightly
    ```
 
 2. Add the ARM64 bare-metal target:
+
    ```bash
    rustup target add aarch64-unknown-none-softfloat
    ```
@@ -155,6 +224,7 @@ Testing Heap Allocation...
 ```
 
 This confirms:
+
 - ✅ Kernel boots successfully
 - ✅ Heap allocator is working
 - ✅ Box and Vec allocations succeed
@@ -170,6 +240,7 @@ This confirms:
 qemu  = []  # Build for QEMU (RPi3 model, 0x3F000000 base)
 rpi3  = []  # Build for real RPi3 (0x3F000000 base)
 rpi4  = []  # Build for real RPi4 (0xFE000000 base)
+rpi5  = []  # Build for real RPi5 (0x1F000000 base)
 ```
 
 ### Compile-Time Checks
@@ -178,7 +249,7 @@ The build system includes compile-time verification that exactly one feature is 
 
 ```rust
 // In src/hardwareselect.rs
-#[cfg(not(any(feature = "qemu", feature = "rpi3", feature = "rpi4")))]
+#[cfg(not(any(feature = "qemu", feature = "rpi3", feature = "rpi4", feature = "rpi5")))]
 compile_error!("Must enable exactly one hardware feature");
 
 #[cfg(all(feature = "qemu", feature = "rpi3"))]
