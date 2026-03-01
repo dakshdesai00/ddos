@@ -3,7 +3,7 @@ use core::alloc::{GlobalAlloc, Layout};
 use core::mem::size_of;
 use core::ptr::null_mut;
 
-const ALIGN: usize = 8;
+const ALIGN: usize = 16;
 
 pub enum HeapType {
     BestFit,
@@ -20,6 +20,7 @@ pub struct FreeList {
     pub(crate) next_fit_cursor: Option<*mut FreeListNode>,
 }
 
+#[repr(C, align(16))]
 pub struct FreeListNode {
     size: usize,
     next: Option<*mut FreeListNode>,
@@ -33,7 +34,7 @@ impl FreeListNode {
 
 impl FreeList {
     pub unsafe fn init(start: usize, capacity: usize, heap_type: HeapType) -> Self {
-        let aligned_start = Self::align_up(start);
+        let aligned_start = Self::align_up(start).expect("heap start alignment overflow");
         let alignment_loss = aligned_start - start;
         let usable_capacity = capacity.saturating_sub(alignment_loss) & !(ALIGN - 1);
 
@@ -242,18 +243,23 @@ impl FreeList {
         (None, None)
     }
 
-    fn align_up(size: usize) -> usize {
-        (size + ALIGN - 1) & !(ALIGN - 1)
+    fn align_up(size: usize) -> Option<usize> {
+        size.checked_add(ALIGN - 1).map(|s| s & !(ALIGN - 1))
     }
 
     fn block_overhead() -> usize {
         size_of::<FreeListNode>() + size_of::<usize>()
     }
 
-    pub fn allocate(&mut self, requested_size: usize) -> Option<*mut u8> {
-        let aligned_payload = Self::align_up(requested_size);
+    pub fn allocate(&mut self, requested_size: usize, requested_align: usize) -> Option<*mut u8> {
+        if requested_align > ALIGN {
+            return None;
+        }
 
-        let total_size = aligned_payload + Self::block_overhead();
+        let request = requested_size.max(1);
+        let aligned_payload = Self::align_up(request)?;
+        let raw_total = aligned_payload.checked_add(Self::block_overhead())?;
+        let total_size = Self::align_up(raw_total)?;
 
         let (region, prev) = match self.heap_type {
             HeapType::FirstFit => self.find_region_first_fit(total_size),
@@ -375,7 +381,7 @@ unsafe impl GlobalAlloc for Locked<FreeList> {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         let allocator = self.lock();
 
-        match allocator.allocate(layout.size()) {
+        match allocator.allocate(layout.size(), layout.align()) {
             Some(ptr) => ptr,
             None => null_mut(),
         }

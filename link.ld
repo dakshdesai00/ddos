@@ -5,7 +5,7 @@
  * It defines the memory layout and section placement for the ARM64 executable.
  * 
  * Raspberry Pi boot process:
- * 1. GPU firmware loads kernel8.img at address 0x80000
+ * 1. GPU firmware loads/relocates kernel image at address 0x80000
  * 2. CPU starts executing at _start (first instruction)
  * 3. Memory below 0x80000 is available for stack
  * 4. Memory at/above 0x80000 contains our kernel code and data
@@ -16,7 +16,7 @@ ENTRY(_start)
 
 SECTIONS
 {
-    /* Set location counter to 0x80000 (where RPi loads kernel) */
+    /* Set location counter to 0x80000 (where firmware relocates kernel) */
     . = 0x80000;
 
     /* .text section: Executable code */

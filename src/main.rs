@@ -41,6 +41,7 @@ pub extern "C" fn _main() -> ! {
     }
     let _ = writeln!(uart, "- Vec allocated: {:?} (Success!)", vec);
 
+    let _ = writeln!(uart, "[KERNEL] UART console mode");
     let _ = write!(uart, "\n> ");
     loop {
         let byte = uart.read_byte();
@@ -51,9 +52,10 @@ pub extern "C" fn _main() -> ! {
             127 | 8 => {
                 let _ = write!(uart, "\x08 \x08");
             }
-            _ => {
+            b' '..=b'~' => {
                 let _ = write!(uart, "{}", byte as char);
             }
+            _ => {}
         }
     }
 }

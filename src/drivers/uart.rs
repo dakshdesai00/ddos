@@ -24,30 +24,33 @@ impl Uart {
     }
 
     fn init(&self) {
-        let baud_divisor_times_64 = (UART_CLOCK_HZ * 4 + (Self::BAUD_RATE / 2)) / Self::BAUD_RATE;
-        let integer_divisor = baud_divisor_times_64 / 64;
-        let fractional_divisor = baud_divisor_times_64 % 64;
+        #[cfg(feature = "rpi5")]
+        {
+            return;
+        }
 
-        unsafe {
-            write_volatile(CR, 0);
+        #[cfg(not(feature = "rpi5"))]
+        {
+            let baud_divisor_times_64 =
+                (UART_CLOCK_HZ * 4 + (Self::BAUD_RATE / 2)) / Self::BAUD_RATE;
+            let integer_divisor = baud_divisor_times_64 / 64;
+            let fractional_divisor = baud_divisor_times_64 % 64;
 
-            write_volatile(IMSC, 0);
-
-            write_volatile(ICR, 0x7FF);
-
-            write_volatile(IBRD, integer_divisor);
-            write_volatile(FBRD, fractional_divisor);
-
-            write_volatile(LCRH, (1 << 4) | (3 << 5));
-
-            write_volatile(CR, (1 << 0) | (1 << 8) | (1 << 9));
+            unsafe {
+                write_volatile(CR, 0);
+                write_volatile(IMSC, 0);
+                write_volatile(ICR, 0x7FF);
+                write_volatile(IBRD, integer_divisor);
+                write_volatile(FBRD, fractional_divisor);
+                write_volatile(LCRH, (1 << 4) | (3 << 5));
+                write_volatile(CR, (1 << 0) | (1 << 8) | (1 << 9));
+            }
         }
     }
 
     pub fn send(&self, c: char) {
         unsafe {
             while (read_volatile(FR) & (1 << 5)) != 0 {}
-
             write_volatile(DR, c as u32);
         }
     }
@@ -55,7 +58,6 @@ impl Uart {
     pub fn read_byte(&self) -> u8 {
         unsafe {
             while (read_volatile(FR) & (1 << 4)) != 0 {}
-
             (read_volatile(DR) & 0xFF) as u8
         }
     }
@@ -64,6 +66,9 @@ impl Uart {
 impl fmt::Write for Uart {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         for c in s.chars() {
+            if c == '\n' {
+                self.send('\r');
+            }
             self.send(c);
         }
         Ok(())

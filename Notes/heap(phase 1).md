@@ -11,6 +11,64 @@
 
 ---
 
+## Code Sync Update (2026-03-02)
+
+This section reflects the **current code** in `src/memory/*` and should be treated as canonical if anything below disagrees.
+
+### Current `config.rs` constants
+
+```rust
+pub const KERNEL_START: usize = 0x80000;
+pub const KERNEL_STACK_START: usize = 0x80000;
+pub const HEAP_START: usize = KERNEL_STACK_START + 0x200000; // 0x280000
+pub const HEAP_SIZE: usize = 0x200000;                        // 2 MiB
+```
+
+Effective heap range is still `0x280000..0x480000` (2 MiB total), but the kernel/stack base constants are now `0x80000`.
+
+### Current allocator invariants in `heap.rs`
+
+- `ALIGN` is **16** (not 8).
+- `FreeListNode` uses `#[repr(C, align(16))]`.
+- `align_up()` returns `Option<usize>` and uses checked arithmetic.
+- `init()` now aligns the start address up, subtracts alignment loss from capacity, and asserts minimum usable space.
+- `init()` writes both the initial head node and its footer.
+
+### Current allocation API and behavior
+
+```rust
+pub fn allocate(&mut self, requested_size: usize, requested_align: usize) -> Option<*mut u8>
+```
+
+- Requests with `requested_align > ALIGN` are rejected (`None`).
+- Zero-size requests are normalized via `requested_size.max(1)`.
+- Total block size is computed with checked + aligned math:
+  - aligned payload
+  - plus header+footer overhead
+  - then aligned again
+- Strategy dispatch is unchanged (`BestFit`, `WorstFit`, `FirstFit`, `NextFit`).
+
+### Current integration in `mod.rs`
+
+```rust
+pub fn init() {
+        unsafe {
+                let allocator = ALLOCATOR.lock();
+                *allocator = FreeList::init(HEAP_START, HEAP_SIZE, HeapType::BestFit);
+        }
+}
+```
+
+Global allocator bridge now passes both size and alignment:
+
+```rust
+allocator.allocate(layout.size(), layout.align())
+```
+
+So unlike the earlier phase note, `layout.align()` is no longer ignored.
+
+---
+
 ## What I Actually Read and Why It Matters
 
 The core of this phase is Chapter 17 of OSTEP — _Free-Space Management_. Before that, chapters 13 and 14 give you the mental model: programs see virtual address spaces, not real RAM, and `malloc`/`free` live in user space as a library on top of OS-provided memory. Chapter 15 explains the hardware mechanism behind virtual memory — base and bounds registers, the MMU, address translation. We're writing the OS, so we're writing the `malloc`. The virtual memory machinery in chapter 15 is coming later when we add user processes.
@@ -24,22 +82,22 @@ The answer is a **free list**: a linked list embedded _inside the free memory it
 ## Memory Layout — `src/memory/config.rs`
 
 ```rust
-pub const KERNEL_START: usize = 0x80000;
-pub const KERNEL_STACK_START: usize = 0x80000;
+pub const KERNEL_START: usize = 0x200000;
+pub const KERNEL_STACK_START: usize = 0x200000;
 pub const HEAP_START: usize = KERNEL_STACK_START + 0x200000;
 pub const HEAP_SIZE: usize = 0x200000;
 ```
 
-The Raspberry Pi bootloader always loads the kernel at physical address `0x80000`. That's not a choice we make — it's what the Broadcom firmware does. So `KERNEL_START` is fixed.
+The Raspberry Pi bootloader always loads the kernel at physical address `0x200000`. That's not a choice we make — it's what the Broadcom firmware does. So `KERNEL_START` is fixed.
 
-The stack grows downward from `0x80000`. We give it 2MB of space (`0x200000`), which means the heap starts at `0x80000 + 0x200000 = 0x280000`. The heap also gets 2MB. They're separated by the stack buffer so they can't crash into each other.
+The stack grows downward from `0x200000`. We give it 2MB of space (`0x200000`), which means the heap starts at `0x200000 + 0x200000 = 0x400000`. The heap also gets 2MB. They're separated by the stack buffer so they can't crash into each other.
 
 Visually:
 
 ```
 0x00000000   Firmware / bootloader region (don't touch)
 0x00080000   Kernel code starts here
-             Stack lives between 0x80000 and 0x280000, grows downward
+             Stack lives between 0x200000 and 0x400000, grows downward
 0x00280000   Heap starts here, grows upward
 0x00480000   End of heap
 ```

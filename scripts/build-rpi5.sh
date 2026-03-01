@@ -103,7 +103,11 @@ cat > "$CONFIG_TXT" <<EOF
 arm_64bit=1
 kernel=kernel_2712.img
 enable_uart=1
-uart_2ndstage=1
+dtparam=uart0_console
+dtoverlay=disable-bt
+enable_rp1_uart=1
+pciex4_reset=0
+uart_2ndstage=0
 disable_commandline_tags=1
 EOF
 echo -e "${GREEN}✓${NC} Created $CONFIG_TXT"
