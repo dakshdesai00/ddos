@@ -3,12 +3,12 @@ pub mod heap;
 
 use core::alloc::Layout;
 
-use super::utils::locked::Locked;
+use super::utils::locked::SpinLock;
 use config::{HEAP_SIZE, HEAP_START};
 use heap::{FreeList, HeapType};
 
 #[global_allocator]
-static ALLOCATOR: Locked<FreeList> = Locked::new(FreeList {
+static ALLOCATOR: SpinLock<FreeList> = SpinLock::new(FreeList {
     head: None,
     start_address: 0,
     capacity: 0,
@@ -19,7 +19,7 @@ static ALLOCATOR: Locked<FreeList> = Locked::new(FreeList {
 
 pub fn init() {
     unsafe {
-        let allocator = ALLOCATOR.lock();
+        let mut allocator = ALLOCATOR.lock();
 
         *allocator = FreeList::init(HEAP_START, HEAP_SIZE, HeapType::BestFit);
     }

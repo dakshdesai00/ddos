@@ -1,4 +1,4 @@
-use super::super::utils::locked::Locked;
+use super::super::utils::locked::SpinLock;
 use core::alloc::{GlobalAlloc, Layout};
 use core::mem::size_of;
 use core::ptr::null_mut;
@@ -377,9 +377,10 @@ impl FreeList {
     }
 }
 
-unsafe impl GlobalAlloc for Locked<FreeList> {
+unsafe impl GlobalAlloc for SpinLock<FreeList> {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        let allocator = self.lock();
+        // 2. Add 'mut' here so the guard can mutate the FreeListx
+        let mut allocator = self.lock();
 
         match allocator.allocate(layout.size(), layout.align()) {
             Some(ptr) => ptr,
@@ -388,7 +389,8 @@ unsafe impl GlobalAlloc for Locked<FreeList> {
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, _layout: Layout) {
-        let allocator = self.lock();
+        // 3. Add 'mut' here too!
+        let mut allocator = self.lock();
         allocator.deallocate(ptr as usize);
     }
 }

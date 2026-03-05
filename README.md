@@ -45,6 +45,26 @@ It includes:
 - Rust integration details (`#[global_allocator]`, `GlobalAlloc`, `Locked<T>`)
 - OSTEP chapter takeaways (13, 14, 15, 17)
 
+### Notes/locks(phase 2).md
+
+Click here: [Click me to open this note](Notes/locks%28phase%202%29.md)
+
+This note explains the Phase 2 lock implementations and the OS concepts behind them.
+It includes:
+
+- why race conditions exist and what mutual exclusion means
+- the oldest approach: disabling hardware interrupts (OSTEP 28.3)
+- all four hardware atomic primitives (Test-And-Set, Compare-And-Swap, LL/SC, Fetch-And-Add)
+- why yield and sleep are not implemented yet (no scheduler)
+- why `AtomicBool` crashes on real Pi 5 hardware (MMU off, Exclusive Monitor limitation)
+- the interrupt-disable workaround and when it gets replaced (Phase 4: Paging)
+- all three lock implementations (`SpinLock`, `CasLock`, `TicketLock`) with full syntax breakdown
+- memory ordering explained (`Acquire`, `Release`, `Relaxed`) and why it matters
+- `unsafe impl Sync` and `unsafe impl Send` explained
+- what changed in `heap.rs`, `mod.rs`, `uart.rs`, and `main.rs`
+- `print!` and `println!` macro internals
+- OSTEP chapter takeaways (26, 28, 29)
+
 As more phases are added, new files in `Notes/` can follow the same format.
 
 ## OSTEP (book links)

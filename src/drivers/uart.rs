@@ -1,3 +1,4 @@
+use super::super::utils::locked::SpinLock;
 use crate::hardwareselect::{UART_CLOCK_HZ, UART0_BASE};
 use core::fmt;
 use core::ptr::{read_volatile, write_volatile};
@@ -14,16 +15,16 @@ const ICR: *mut u32 = (PL011_BASE + 0x44) as *mut u32;
 
 pub struct Uart;
 
+pub static UART: SpinLock<Uart> = SpinLock::new(Uart::new());
+
 impl Uart {
     const BAUD_RATE: u32 = 115_200;
 
-    pub fn new() -> Uart {
-        let uart = Uart;
-        uart.init();
-        uart
+    pub const fn new() -> Uart {
+        Uart
     }
 
-    fn init(&self) {
+    pub fn init(&self) {
         #[cfg(feature = "rpi5")]
         {
             return;
@@ -73,4 +74,30 @@ impl fmt::Write for Uart {
         }
         Ok(())
     }
+}
+
+// MACROS
+
+#[doc(hidden)]
+pub fn _print(args: core::fmt::Arguments) {
+    use core::fmt::Write;
+    let mut uart = crate::drivers::uart::UART.lock();
+    let _ = uart.write_fmt(args);
+}
+
+#[macro_export]
+macro_rules! print {
+    ($($arg:tt)*) => {
+        $crate::drivers::uart::_print(format_args!($($arg)*));
+    };
+}
+
+#[macro_export]
+macro_rules! println {
+    () => {
+        $crate::print!("\n");
+    };
+    ($($arg:tt)*) => {
+        $crate::print!("{}\n", format_args!($($arg)*));
+    };
 }
