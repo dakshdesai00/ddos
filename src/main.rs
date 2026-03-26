@@ -105,7 +105,6 @@ extern "C" fn task_b() {
     }
     loop {}
 }
-// ============================================================================
 
 #[unsafe(no_mangle)]
 pub extern "C" fn _main() -> ! {
@@ -114,6 +113,9 @@ pub extern "C" fn _main() -> ! {
     println!("\n[KERNEL] Booting DDOS...");
 
     memory::init();
+
+    drivers::interrupt::init();
+    drivers::timer::init();
 
     println!("[KERNEL] Heap Initialized.");
     println!("Welcome to DDOS Kernel v0.1");
@@ -150,23 +152,10 @@ pub extern "C" fn _main() -> ! {
 
     println!("\n[KERNEL] We are back in main. The OS is in full control again.");
 
-    println!("[KERNEL] UART console mode");
-    print!("\n> ");
-
+    println!("[KERNEL] Dropping into busy loop. Waiting for Virtual Timer Heartbeat...");
     loop {
-        let byte = drivers::uart::UART.lock().read_byte();
-
-        match byte {
-            b'\r' | b'\n' => {
-                print!("\r\n> ");
-            }
-            127 | 8 => {
-                print!("\x08 \x08");
-            }
-            b' '..=b'~' => {
-                print!("{}", byte as char);
-            }
-            _ => {}
+        unsafe {
+            core::arch::asm!("nop");
         }
     }
 }
