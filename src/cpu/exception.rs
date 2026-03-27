@@ -16,12 +16,12 @@ fn read_far() -> u64 {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn handle_irq() {
+pub(crate) extern "C" fn handle_irq() {
     crate::drivers::interrupt::handle_irq();
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn handle_sync() {
+pub(crate) extern "C" fn handle_sync() {
     let esr = read_esr();
     let far = read_far();
 

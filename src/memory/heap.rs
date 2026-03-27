@@ -5,23 +5,23 @@ use core::ptr::null_mut;
 
 const ALIGN: usize = 16;
 
-pub enum HeapType {
+pub(crate) enum HeapType {
     BestFit,
     WorstFit,
     FirstFit,
     NextFit,
 }
 
-pub struct FreeList {
-    pub head: Option<*mut FreeListNode>,
-    pub start_address: usize,
-    pub capacity: usize,
-    pub heap_type: HeapType,
-    pub(crate) next_fit_cursor: Option<*mut FreeListNode>,
+pub(crate) struct FreeList {
+    head: Option<*mut FreeListNode>,
+    start_address: usize,
+    capacity: usize,
+    heap_type: HeapType,
+    next_fit_cursor: Option<*mut FreeListNode>,
 }
 
 #[repr(C, align(16))]
-pub struct FreeListNode {
+struct FreeListNode {
     size: usize,
     next: Option<*mut FreeListNode>,
 }
@@ -33,7 +33,17 @@ impl FreeListNode {
 }
 
 impl FreeList {
-    pub unsafe fn init(start: usize, capacity: usize, heap_type: HeapType) -> Self {
+    pub(crate) const fn empty(heap_type: HeapType) -> Self {
+        FreeList {
+            head: None,
+            start_address: 0,
+            capacity: 0,
+            heap_type,
+            next_fit_cursor: None,
+        }
+    }
+
+    pub(crate) unsafe fn init(start: usize, capacity: usize, heap_type: HeapType) -> Self {
         let aligned_start = Self::align_up(start).expect("heap start alignment overflow");
         let alignment_loss = aligned_start - start;
         let usable_capacity = capacity.saturating_sub(alignment_loss) & !(ALIGN - 1);
@@ -251,7 +261,7 @@ impl FreeList {
         size_of::<FreeListNode>() + size_of::<usize>()
     }
 
-    pub fn allocate(&mut self, requested_size: usize, requested_align: usize) -> Option<*mut u8> {
+    fn allocate(&mut self, requested_size: usize, requested_align: usize) -> Option<*mut u8> {
         if requested_align > ALIGN {
             return None;
         }
@@ -315,7 +325,7 @@ impl FreeList {
         }
     }
 
-    pub fn deallocate(&mut self, address: usize) {
+    fn deallocate(&mut self, address: usize) {
         unsafe {
             let node_ptr = (address - size_of::<FreeListNode>()) as *mut FreeListNode;
 

@@ -1,3 +1,3 @@
-pub mod interrupt;
-pub mod timer;
-pub mod uart;
+pub(crate) mod interrupt;
+pub(crate) mod timer;
+pub(crate) mod uart;

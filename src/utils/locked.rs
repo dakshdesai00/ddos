@@ -41,7 +41,7 @@ fn restore_irq_state(was_enabled: bool) {
 // Uses: atomic .swap()
 // ============================================================================
 
-pub struct SpinLock<T> {
+pub(crate) struct SpinLock<T> {
     #[cfg(feature = "rpi5")]
     locked_state: UnsafeCell<bool>,
 
@@ -55,7 +55,7 @@ unsafe impl<T> Sync for SpinLock<T> {} // This tells rust that it is safe to sha
 unsafe impl<T> Send for SpinLock<T> {} // This tells rust that it is safe to transfer ownership between threads
 
 impl<T> SpinLock<T> {
-    pub const fn new(data: T) -> Self {
+    pub(crate) const fn new(data: T) -> Self {
         Self {
             #[cfg(feature = "rpi5")]
             locked_state: UnsafeCell::new(false),
@@ -67,7 +67,7 @@ impl<T> SpinLock<T> {
         }
     }
 
-    pub fn lock(&self) -> SpinLockGuard<T> {
+    pub(crate) fn lock(&self) -> SpinLockGuard<T> {
         #[cfg(feature = "rpi5")]
         {
             loop {
@@ -98,7 +98,7 @@ impl<T> SpinLock<T> {
         }
     }
 
-    pub fn unlock(&self) {
+    fn unlock(&self) {
         #[cfg(feature = "rpi5")]
         unsafe {
             *self.locked_state.get() = false;
@@ -109,7 +109,7 @@ impl<T> SpinLock<T> {
     }
 }
 
-pub struct SpinLockGuard<'a, T> {
+pub(crate) struct SpinLockGuard<'a, T> {
     lock: &'a SpinLock<T>,
 
     #[cfg(feature = "rpi5")]
@@ -141,7 +141,7 @@ impl<T> Drop for SpinLockGuard<'_, T> {
 // Uses: atomic .compare_exchange_weak()
 // ============================================================================
 
-pub struct CasLock<T> {
+pub(crate) struct CasLock<T> {
     locked_state: AtomicBool,
     data_to_protect: UnsafeCell<T>,
 }
@@ -150,14 +150,14 @@ unsafe impl<T> Sync for CasLock<T> {}
 unsafe impl<T> Send for CasLock<T> {}
 
 impl<T> CasLock<T> {
-    pub const fn new(data: T) -> Self {
+    pub(crate) const fn new(data: T) -> Self {
         Self {
             locked_state: AtomicBool::new(false),
             data_to_protect: UnsafeCell::new(data),
         }
     }
 
-    pub fn lock(&self) -> CasLockGuard<T> {
+    pub(crate) fn lock(&self) -> CasLockGuard<T> {
         // Compare-And-Swap: "If the current state is exactly false, make it true. Otherwise, fail."
         // We use 'weak' in loops because it can occasionally fail on ARM due to interrupts,
         // which is fine since we just spin and try again.
@@ -171,12 +171,12 @@ impl<T> CasLock<T> {
         CasLockGuard { lock: self }
     }
 
-    pub fn unlock(&self) {
+    fn unlock(&self) {
         self.locked_state.store(false, Ordering::Release);
     }
 }
 
-pub struct CasLockGuard<'a, T> {
+pub(crate) struct CasLockGuard<'a, T> {
     lock: &'a CasLock<T>,
 }
 
@@ -203,7 +203,7 @@ impl<T> Drop for CasLockGuard<'_, T> {
 // Guarantees fairness so no CPU core starves!
 // ============================================================================
 
-pub struct TicketLock<T> {
+pub(crate) struct TicketLock<T> {
     ticket_counter: AtomicUsize,
     turn_display: AtomicUsize,
     data_to_protect: UnsafeCell<T>,
@@ -213,7 +213,7 @@ unsafe impl<T> Sync for TicketLock<T> {}
 unsafe impl<T> Send for TicketLock<T> {}
 
 impl<T> TicketLock<T> {
-    pub const fn new(data: T) -> Self {
+    pub(crate) const fn new(data: T) -> Self {
         Self {
             ticket_counter: AtomicUsize::new(0),
             turn_display: AtomicUsize::new(0),
@@ -221,7 +221,7 @@ impl<T> TicketLock<T> {
         }
     }
 
-    pub fn lock(&self) -> TicketLockGuard<T> {
+    pub(crate) fn lock(&self) -> TicketLockGuard<T> {
         // Fetch-And-Add: Grab a ticket and increment the roll for the next CPU core.
         let my_ticket = self.ticket_counter.fetch_add(1, Ordering::Relaxed);
 
@@ -233,13 +233,13 @@ impl<T> TicketLock<T> {
         TicketLockGuard { lock: self }
     }
 
-    pub fn unlock(&self) {
+    fn unlock(&self) {
         // Increment the "Now Serving" display to wake up the next CPU core in line.
         self.turn_display.fetch_add(1, Ordering::Release);
     }
 }
 
-pub struct TicketLockGuard<'a, T> {
+pub(crate) struct TicketLockGuard<'a, T> {
     lock: &'a TicketLock<T>,
 }
 

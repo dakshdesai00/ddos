@@ -1,31 +1,17 @@
-pub mod config;
-pub mod heap;
-
-use core::alloc::Layout;
+pub(crate) mod config;
+pub(crate) mod heap;
 
 use super::utils::locked::SpinLock;
 use config::{HEAP_SIZE, HEAP_START};
 use heap::{FreeList, HeapType};
 
 #[global_allocator]
-static ALLOCATOR: SpinLock<FreeList> = SpinLock::new(FreeList {
-    head: None,
-    start_address: 0,
-    capacity: 0,
+static ALLOCATOR: SpinLock<FreeList> = SpinLock::new(FreeList::empty(HeapType::BestFit));
 
-    heap_type: HeapType::BestFit,
-    next_fit_cursor: None,
-});
-
-pub fn init() {
+pub(crate) fn init() {
     unsafe {
         let mut allocator = ALLOCATOR.lock();
 
         *allocator = FreeList::init(HEAP_START, HEAP_SIZE, HeapType::BestFit);
     }
-}
-
-#[alloc_error_handler]
-fn alloc_error_handler(layout: Layout) -> ! {
-    panic!("allocation error: {:?}", layout)
 }

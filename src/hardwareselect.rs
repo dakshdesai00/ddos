@@ -7,68 +7,80 @@
 // ============================================================================
 
 #[cfg(any(feature = "qemu", feature = "rpi3"))]
-pub const PERIPHERAL_BASE: usize = 0x3F00_0000;
+pub(crate) const PERIPHERAL_BASE: usize = 0x3F00_0000;
 
 #[cfg(feature = "rpi4")]
-pub const PERIPHERAL_BASE: usize = 0xFE00_0000;
+pub(crate) const PERIPHERAL_BASE: usize = 0xFE00_0000;
 
 #[cfg(feature = "rpi5")]
-pub const PERIPHERAL_BASE: usize = 0x1C_0000_0000;
+pub(crate) const PERIPHERAL_BASE: usize = 0x1C_0000_0000;
 
 // ============================================================================
 // 2. PERIPHERAL OFFSETS (UART, GPIO, TIMERS)
 // ============================================================================
 
 #[cfg(feature = "rpi5")]
-pub const UART0_BASE: usize = PERIPHERAL_BASE + 0x30000;
-#[cfg(not(feature = "rpi5"))]
-pub const UART0_BASE: usize = PERIPHERAL_BASE + 0x201000;
+pub(crate) const UART0_BASE: usize = PERIPHERAL_BASE + 0x30000;
+#[cfg(all(
+    not(feature = "rpi5"),
+    any(feature = "qemu", feature = "rpi3", feature = "rpi4")
+))]
+pub(crate) const UART0_BASE: usize = PERIPHERAL_BASE + 0x201000;
 
 #[cfg(feature = "rpi5")]
-pub const GPIO_BASE: usize = PERIPHERAL_BASE + 0xD0000;
-#[cfg(not(feature = "rpi5"))]
-pub const GPIO_BASE: usize = PERIPHERAL_BASE + 0x200000;
+pub(crate) const GPIO_BASE: usize = PERIPHERAL_BASE + 0xD0000;
+#[cfg(all(
+    not(feature = "rpi5"),
+    any(feature = "qemu", feature = "rpi3", feature = "rpi4")
+))]
+pub(crate) const GPIO_BASE: usize = PERIPHERAL_BASE + 0x200000;
 
 #[cfg(feature = "rpi5")]
-pub const TIMER_BASE: usize = 0;
-#[cfg(not(feature = "rpi5"))]
-pub const TIMER_BASE: usize = PERIPHERAL_BASE + 0x003000;
+pub(crate) const TIMER_BASE: usize = 0;
+#[cfg(all(
+    not(feature = "rpi5"),
+    any(feature = "qemu", feature = "rpi3", feature = "rpi4")
+))]
+pub(crate) const TIMER_BASE: usize = PERIPHERAL_BASE + 0x003000;
 
 #[cfg(feature = "rpi5")]
-pub const WATCHDOG_BASE: usize = 0;
-#[cfg(not(feature = "rpi5"))]
-pub const WATCHDOG_BASE: usize = PERIPHERAL_BASE + 0x100000;
+pub(crate) const WATCHDOG_BASE: usize = 0;
+#[cfg(all(
+    not(feature = "rpi5"),
+    any(feature = "qemu", feature = "rpi3", feature = "rpi4")
+))]
+pub(crate) const WATCHDOG_BASE: usize = PERIPHERAL_BASE + 0x100000;
 
 // ============================================================================
 // 3. INTERRUPT CONTROLLER BASE ADDRESSES
 // ============================================================================
 
 #[cfg(feature = "rpi5")]
-pub const GICD_BASE: usize = 0x10_7FFF_9000;
+pub(crate) const GICD_BASE: usize = 0x10_7FFF_9000;
 #[cfg(feature = "rpi5")]
-pub const GICC_BASE: usize = 0x10_7FFF_A000;
+pub(crate) const GICC_BASE: usize = 0x10_7FFF_A000;
 
 #[cfg(feature = "rpi4")]
-pub const GICD_BASE: usize = 0xFF84_1000;
+pub(crate) const GICD_BASE: usize = 0xFF84_1000;
 #[cfg(feature = "rpi4")]
-pub const GICC_BASE: usize = 0xFF84_2000;
+pub(crate) const GICC_BASE: usize = 0xFF84_2000;
 
 #[cfg(any(feature = "qemu", feature = "rpi3"))]
-pub const LOCAL_INTC_BASE: usize = 0x4000_0000;
+pub(crate) const LOCAL_INTC_BASE: usize = 0x4000_0000;
 
 // ============================================================================
 // 4. CLOCK SPEEDS
 // ============================================================================
 
 // Simplified: 48MHz applies to QEMU, RPi3, RPi4, and RPi5's RP1 UART
-pub const UART_CLOCK_HZ: u32 = 48_000_000;
-pub const SYSTEM_CLOCK_HZ: u32 = 1_000_000_000;
+pub(crate) const UART_CLOCK_HZ: u32 = 48_000_000;
+pub(crate) const SYSTEM_CLOCK_HZ: u32 = 1_000_000_000;
 
 // ============================================================================
 // 5. HELPER FUNCTIONS FOR LOGGING
 // ============================================================================
 
-pub fn get_platform_name() -> &'static str {
+pub(crate) fn get_platform_name() -> &'static str {
     #[cfg(feature = "qemu")]
     return "QEMU (RPi3 Model)";
     #[cfg(feature = "rpi3")]
@@ -81,7 +93,7 @@ pub fn get_platform_name() -> &'static str {
     return "Unknown Platform";
 }
 
-pub fn get_peripheral_base_display() -> &'static str {
+pub(crate) fn get_peripheral_base_display() -> &'static str {
     #[cfg(any(feature = "qemu", feature = "rpi3"))]
     return "0x3F00_0000";
     #[cfg(feature = "rpi4")]

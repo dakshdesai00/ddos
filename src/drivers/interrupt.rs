@@ -1,6 +1,6 @@
 use crate::hardwareselect;
 
-pub fn init() {
+pub(crate) fn init() {
     #[cfg(any(feature = "rpi4", feature = "rpi5"))]
     unsafe {
         let gicd_ctlr = hardwareselect::GICD_BASE as *mut u32;
@@ -30,7 +30,7 @@ pub fn init() {
     }
 }
 
-pub fn handle_irq() {
+pub(crate) fn handle_irq() {
     #[cfg(any(feature = "rpi4", feature = "rpi5"))]
     unsafe {
         let gicc_iar = (hardwareselect::GICC_BASE + 0x00C) as *mut u32;

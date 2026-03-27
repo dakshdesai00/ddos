@@ -13,18 +13,18 @@ const CR: *mut u32 = (PL011_BASE + 0x30) as *mut u32;
 const IMSC: *mut u32 = (PL011_BASE + 0x38) as *mut u32;
 const ICR: *mut u32 = (PL011_BASE + 0x44) as *mut u32;
 
-pub struct Uart;
+pub(crate) struct Uart;
 
-pub static UART: SpinLock<Uart> = SpinLock::new(Uart::new());
+pub(crate) static UART: SpinLock<Uart> = SpinLock::new(Uart::new());
 
 impl Uart {
     const BAUD_RATE: u32 = 115_200;
 
-    pub const fn new() -> Uart {
+    const fn new() -> Uart {
         Uart
     }
 
-    pub fn init(&self) {
+    pub(crate) fn init(&self) {
         #[cfg(feature = "rpi5")]
         {
             return;
@@ -49,14 +49,14 @@ impl Uart {
         }
     }
 
-    pub fn send(&self, c: char) {
+    fn send(&self, c: char) {
         unsafe {
             while (read_volatile(FR) & (1 << 5)) != 0 {}
             write_volatile(DR, c as u32);
         }
     }
 
-    pub fn read_byte(&self) -> u8 {
+    fn read_byte(&self) -> u8 {
         unsafe {
             while (read_volatile(FR) & (1 << 4)) != 0 {}
             (read_volatile(DR) & 0xFF) as u8
@@ -79,7 +79,7 @@ impl fmt::Write for Uart {
 // MACROS
 
 #[doc(hidden)]
-pub fn _print(args: core::fmt::Arguments) {
+pub(crate) fn _print(args: core::fmt::Arguments) {
     use core::fmt::Write;
     let mut uart = crate::drivers::uart::UART.lock();
     let _ = uart.write_fmt(args);
