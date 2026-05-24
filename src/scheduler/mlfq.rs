@@ -51,6 +51,8 @@ impl MLFQ {
     }
 
     pub(crate) fn schedule(&mut self) -> Option<(*mut CpuContext, *const CpuContext)> {
+        self.graveyard.clear();
+
         if self.total_tasks <= 1 {
             return None;
         }
