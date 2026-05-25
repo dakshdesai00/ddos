@@ -36,12 +36,13 @@ pub(crate) fn handle_irq() {
         let gicc_iar = (hardwareselect::GICC_BASE + 0x00C) as *mut u32;
         let irq = core::ptr::read_volatile(gicc_iar) & 0x3FF;
 
+        // EARLY EOI FIX: Acknowledge the interrupt immediately
+        let gicc_eoir = (hardwareselect::GICC_BASE + 0x010) as *mut u32;
+        core::ptr::write_volatile(gicc_eoir, irq);
+
         if irq == 27 {
             crate::drivers::timer::handle_tick();
         }
-
-        let gicc_eoir = (hardwareselect::GICC_BASE + 0x010) as *mut u32;
-        core::ptr::write_volatile(gicc_eoir, irq);
     }
 
     #[cfg(any(feature = "qemu", feature = "rpi3"))]

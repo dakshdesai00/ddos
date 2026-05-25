@@ -1,4 +1,4 @@
-use super::super::utils::locked::SpinLock;
+use super::super::utils::locked::TicketLock;
 use core::alloc::{GlobalAlloc, Layout};
 use core::mem::size_of;
 use core::ptr::null_mut;
@@ -387,7 +387,7 @@ impl FreeList {
     }
 }
 
-unsafe impl GlobalAlloc for SpinLock<FreeList> {
+unsafe impl GlobalAlloc for TicketLock<FreeList> {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         // 2. Add 'mut' here so the guard can mutate the FreeListx
         let mut allocator = self.lock();

@@ -1,9 +1,9 @@
 use super::super::cpu::cpu_switch_to;
 use super::super::cpu::process::{CpuContext, Process, ProcessState};
-use super::super::utils::locked::SpinLock;
+use super::super::utils::locked::TicketLock;
 use alloc::vec::Vec;
 
-pub(crate) static SCHEDULER: SpinLock<RoundRobin> = SpinLock::new(RoundRobin::new());
+pub(crate) static SCHEDULER: TicketLock<RoundRobin> = TicketLock::new(RoundRobin::new());
 
 pub(crate) struct RoundRobin {
     tasks: Vec<Process>,

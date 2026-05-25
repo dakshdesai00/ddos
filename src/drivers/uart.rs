@@ -1,4 +1,4 @@
-use super::super::utils::locked::SpinLock;
+use super::super::utils::locked::TicketLock;
 use crate::hardwareselect::{UART_CLOCK_HZ, UART0_BASE};
 use core::fmt;
 use core::ptr::{read_volatile, write_volatile};
@@ -15,7 +15,7 @@ const ICR: *mut u32 = (PL011_BASE + 0x44) as *mut u32;
 
 pub(crate) struct Uart;
 
-pub(crate) static UART: SpinLock<Uart> = SpinLock::new(Uart::new());
+pub(crate) static UART: TicketLock<Uart> = TicketLock::new(Uart::new());
 
 impl Uart {
     const BAUD_RATE: u32 = 115_200;

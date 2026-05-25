@@ -28,15 +28,14 @@ pub(crate) extern "C" fn handle_sync() {
     let exception_class = esr >> 26;
 
     println!("\n==================================================");
-    println!("🔥 [KERNEL PANIC] SYNCHRONOUS EXCEPTION DETECTED 🔥");
+    println!(" SEGMENTATION FAULT ");
+    println!("Process attempted an illegal memory access!");
     println!("==================================================");
     println!("Exception Class (EC): {:#04X}", exception_class);
     println!("Syndrome (ESR_EL1):   {:#018X}", esr);
     println!("Fault Addr (FAR_EL1): {:#018X}", far);
     println!("==================================================");
-    println!("System Halted.");
+    println!("[KERNEL] Terminating malicious process...");
 
-    loop {
-        unsafe { asm!("wfe") };
-    }
+    crate::sys_exit();
 }

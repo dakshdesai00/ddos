@@ -1,13 +1,13 @@
 use super::super::cpu::cpu_switch_to;
 use super::super::cpu::process::{CpuContext, Process, ProcessState};
-use super::super::utils::locked::SpinLock;
+use super::super::utils::locked::TicketLock;
 use alloc::vec::Vec;
 
 const NUM_QUEUES: usize = 5;
 const TIME_SLICES: [usize; NUM_QUEUES] = [5, 10, 20, 40, 80];
 const BOOST_INTERVAL: u64 = 100;
 
-pub(crate) static SCHEDULER: SpinLock<MLFQ> = SpinLock::new(MLFQ::new());
+pub(crate) static SCHEDULER: TicketLock<MLFQ> = TicketLock::new(MLFQ::new());
 
 pub(crate) struct MLFQ {
     queues: [Vec<Process>; NUM_QUEUES],

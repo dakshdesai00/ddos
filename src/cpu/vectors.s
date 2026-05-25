@@ -122,6 +122,7 @@ el1_error:
 
 
 el1_sync_invalid:
+    b el1_sync
 el1_irq_invalid:
 el1_fiq_invalid:
 el1_error_invalid:
