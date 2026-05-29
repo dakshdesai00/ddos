@@ -65,6 +65,30 @@ It includes:
 - `print!` and `println!` macro internals
 - OSTEP chapter takeaways (26, 28, 29)
 
+### Notes/processes(phase 3 part 1).md
+
+Click here: [Click me to open this note](Notes/processes%28phase%203%20part%201%29.md)
+
+This note explains the first half of the process work (process model and context setup).
+It includes:
+
+- what a process is (address space + execution context)
+- CPU context layout and saved registers
+- initial process creation and entry bootstrap
+- why stacks matter for isolation and reliability
+
+### Notes/scheduler(phase 3 part 2).md
+
+Click here: [Click me to open this note](Notes/scheduler%28phase%203%20part%202%29.md)
+
+This note explains the scheduler design and implementation.
+It includes:
+
+- scheduling goals and metrics
+- Round‑Robin vs. MLFQ tradeoffs
+- timer‑driven preemption flow
+- how context switching connects to scheduling
+
 ### Notes/paging.md
 
 Click here: [Click me to open this note](Notes/paging.md)
