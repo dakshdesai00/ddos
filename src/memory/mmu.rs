@@ -1,6 +1,7 @@
 use super::frame::PAGE_SIZE;
 use super::layout;
 use super::pagetable::{PageTable, PageTableEntry};
+use crate::hardwareselect;
 
 // We need a safe boundary for peripherals (16MB is plenty for UART, GPIO)
 const PERIPHERAL_SIZE: usize = 0x0100_0000;
@@ -26,6 +27,84 @@ pub unsafe fn init() {
         #[cfg(not(feature = "rpi5"))]
         {
             for addr in (layout::PERIPHERAL_BASE..layout::PERIPHERAL_BASE + PERIPHERAL_SIZE)
+                .step_by(PAGE_SIZE)
+            {
+                (*l0_ptr).map_page(
+                    addr,
+                    addr,
+                    PageTableEntry::VALID
+                        | PageTableEntry::TABLE_OR_PAGE
+                        | PageTableEntry::ATTR_DEVICE
+                        | PageTableEntry::ACCESS_FLAG,
+                );
+            }
+        }
+
+        // 2b. Map Local Interrupt Controller for QEMU/RPi3
+        #[cfg(any(feature = "qemu", feature = "rpi3"))]
+        {
+            const LOCAL_INTC_SIZE: usize = 0x0001_0000; // 64KB local peripheral region
+            for addr in (hardwareselect::LOCAL_INTC_BASE
+                ..hardwareselect::LOCAL_INTC_BASE + LOCAL_INTC_SIZE)
+                .step_by(PAGE_SIZE)
+            {
+                (*l0_ptr).map_page(
+                    addr,
+                    addr,
+                    PageTableEntry::VALID
+                        | PageTableEntry::TABLE_OR_PAGE
+                        | PageTableEntry::ATTR_DEVICE
+                        | PageTableEntry::ACCESS_FLAG,
+                );
+            }
+        }
+
+        // 2c. Map GIC registers for RPi4/RPi5 (outside main peripheral window)
+        #[cfg(feature = "rpi4")]
+        {
+            const GIC_REGION_SIZE: usize = 0x0001_0000; // 64KB
+            for addr in (hardwareselect::GICD_BASE..hardwareselect::GICD_BASE + GIC_REGION_SIZE)
+                .step_by(PAGE_SIZE)
+            {
+                (*l0_ptr).map_page(
+                    addr,
+                    addr,
+                    PageTableEntry::VALID
+                        | PageTableEntry::TABLE_OR_PAGE
+                        | PageTableEntry::ATTR_DEVICE
+                        | PageTableEntry::ACCESS_FLAG,
+                );
+            }
+            for addr in (hardwareselect::GICC_BASE..hardwareselect::GICC_BASE + GIC_REGION_SIZE)
+                .step_by(PAGE_SIZE)
+            {
+                (*l0_ptr).map_page(
+                    addr,
+                    addr,
+                    PageTableEntry::VALID
+                        | PageTableEntry::TABLE_OR_PAGE
+                        | PageTableEntry::ATTR_DEVICE
+                        | PageTableEntry::ACCESS_FLAG,
+                );
+            }
+        }
+
+        #[cfg(feature = "rpi5")]
+        {
+            const GIC_REGION_SIZE: usize = 0x0001_0000; // 64KB
+            for addr in (hardwareselect::GICD_BASE..hardwareselect::GICD_BASE + GIC_REGION_SIZE)
+                .step_by(PAGE_SIZE)
+            {
+                (*l0_ptr).map_page(
+                    addr,
+                    addr,
+                    PageTableEntry::VALID
+                        | PageTableEntry::TABLE_OR_PAGE
+                        | PageTableEntry::ATTR_DEVICE
+                        | PageTableEntry::ACCESS_FLAG,
+                );
+            }
+            for addr in (hardwareselect::GICC_BASE..hardwareselect::GICC_BASE + GIC_REGION_SIZE)
                 .step_by(PAGE_SIZE)
             {
                 (*l0_ptr).map_page(

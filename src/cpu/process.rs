@@ -1,3 +1,4 @@
+use crate::memory::config::PROCESS_STACK_TOP;
 use crate::memory::frame::{FRAME_ALLOCATOR, PAGE_SIZE};
 use crate::memory::pagetable::{PageTable, PageTableEntry};
 use alloc::vec::Vec;
@@ -32,7 +33,7 @@ pub(crate) struct Process {
     parent_pid: u64,
     current_priority: usize,
     tick_consumed: usize,
-    stack: Vec<u8>,
+    stack: ProcessStack,
 }
 
 #[repr(C)]
@@ -64,18 +65,69 @@ impl CpuContext {
     }
 }
 
+struct ProcessStack {
+    base: usize,
+    size: usize,
+    frames: Vec<usize>,
+}
+
+impl ProcessStack {
+    fn allocate(page_table: &mut PageTable, size_in_kb: u64) -> Self {
+        let stack_size_bytes = (size_in_kb * 1024) as usize;
+        let stack_pages = (stack_size_bytes + PAGE_SIZE - 1) / PAGE_SIZE;
+        assert!(stack_pages > 0, "Stack size must be at least one page");
+
+        let stack_size = stack_pages * PAGE_SIZE;
+        let stack_top = PROCESS_STACK_TOP;
+        let stack_base = stack_top
+            .checked_sub(stack_size)
+            .expect("Stack size exceeds virtual address space");
+
+        let mut frames = Vec::with_capacity(stack_pages);
+        for _ in 0..stack_pages {
+            let frame = FRAME_ALLOCATOR
+                .lock()
+                .alloc_frame()
+                .expect("Out of physical memory for process stack");
+            frames.push(frame);
+        }
+
+        for (i, frame) in frames.iter().enumerate() {
+            let vaddr = stack_base + i * PAGE_SIZE;
+            page_table.map_page(vaddr, *frame, PageTableEntry::ACCESS_FLAG);
+        }
+
+        ProcessStack {
+            base: stack_base,
+            size: stack_size,
+            frames,
+        }
+    }
+
+    fn sp(&self) -> u64 {
+        // 16-byte alignment required by ARM64 hardware
+        ((self.base + self.size) & !0xF) as u64
+    }
+}
+
+impl Drop for ProcessStack {
+    fn drop(&mut self) {
+        let mut allocator = FRAME_ALLOCATOR.lock();
+        for &frame in &self.frames {
+            allocator.free_frame(frame);
+        }
+    }
+}
+
 impl Process {
     pub(crate) fn new(pid: u64, size_in_kb: u64, parent_pid: u64, entry_point: usize) -> Self {
         // Keep the isolated Page Table!
         let pt_phys_addr = PageTable::new_process_table();
+        let page_table = unsafe { &mut *(pt_phys_addr as *mut PageTable) };
 
-        // THE FIX: Allocate the stack securely in the Kernel Heap
-        // This guarantees the Exception Handler will never double-fault if the task crashes.
-        let stack_size = (size_in_kb * 1024) as usize;
-        let mut stack = alloc::vec![0; stack_size];
-
-        // 16-byte alignment required by ARM64 hardware
-        let sp_address = (stack.as_mut_ptr() as u64 + stack.len() as u64) & !0xF;
+        // Allocate the stack from physical frames and map it into the process address space.
+        let stack = ProcessStack::allocate(page_table, size_in_kb);
+        let sp_address = stack.sp();
 
         let mut context = CpuContext::for_entry(entry_point, sp_address);
         context.ttbr0 = pt_phys_addr as u64;
@@ -88,7 +140,7 @@ impl Process {
             parent_pid,
             current_priority: 0,
             tick_consumed: 0,
-            stack, // Hold ownership so the memory isn't dropped
+            stack,
         }
     }
 

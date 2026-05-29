@@ -1,14 +1,14 @@
 // ============================================================================
-// QEMU (virt machine)
+// QEMU (raspi3b)
 // ============================================================================
 #[cfg(feature = "qemu")]
-pub const RAM_START: usize = 0x4000_0000;
+pub const RAM_START: usize = 0x0000_0000;
 
 #[cfg(feature = "qemu")]
-pub const RAM_END: usize = 0x4800_0000; // 128MB limit
+pub const RAM_END: usize = 0x3F00_0000; // Safe boundary before peripherals/GPU
 
 #[cfg(feature = "qemu")]
-pub const PERIPHERAL_BASE: usize = 0x0900_0000;
+pub const PERIPHERAL_BASE: usize = 0x3F00_0000;
 
 // ============================================================================
 // RASPBERRY PI 4

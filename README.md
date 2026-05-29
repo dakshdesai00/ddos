@@ -65,6 +65,21 @@ It includes:
 - `print!` and `println!` macro internals
 - OSTEP chapter takeaways (26, 28, 29)
 
+### Notes/paging.md
+
+Click here: [Click me to open this note](Notes/paging.md)
+
+This note explains paging in detail and connects OSTEP theory to the kernel’s implementation.
+It includes:
+
+- paging basics (VPN/PFN, PTEs, protection)
+- TLBs, context switching, and why flushes matter
+- multi-level page tables and alternatives (hashed/inverted)
+- demand paging, swapping, replacement policies, and thrashing
+- how paging is implemented in this kernel (frame allocator, page tables, MMU setup)
+- per-process stacks backed by page frames
+- issues encountered and the fixes applied during bring-up
+
 As more phases are added, new files in `Notes/` can follow the same format.
 
 ## OSTEP (book links)
